@@ -1,0 +1,27 @@
+.container {
+    width: 500px;
+    height: 500px;
+    margin: 0 auto;
+    border: 3px solid red;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.container > div {
+    box-sizing: border-box;
+    border: 1px solid red;
+    width: calc( 100% / 10 );
+    height: calc( 100% / 10 );
+}
+
+.snake {
+    background-color: blue;
+}
+
+.snake.digesting {
+    background-color: purple;
+}
+
+.food {
+    background-color: green;
+}
