@@ -27,7 +27,7 @@ initialize();
 start();
 
 function initialize() {
-    generateCookies();
+    generateFood();
     generateGrid();
     updateHTML();
 }
@@ -55,7 +55,12 @@ function start() {
     });
 }
 
-function generateCookies() {
+function stop() {
+    clearInterval(loop);
+    console.log('done');
+}
+
+function generateFood() {
     while (food.length !== 5) {
         const random = Math.floor(Math.random() * 100);
         if (!food.includes(random) && snake[0] !== random) {
@@ -101,7 +106,7 @@ function updateVariables() {
         });
         tail.isDigesting = false;
         if (snake.length === 100) {
-            endGame(true);
+            stop(true);
             return;
         }
     }
@@ -110,12 +115,12 @@ function updateVariables() {
         snake[i].isDigesting = snake[i - 1].isDigesting;
     }
     if (isTouchingEdges(direction, head.position)) {
-        endGame(false);
+        stop(false);
         return;
     }
     const position = getNextPosition(direction, head.position);
     if (isBitingItself(position)) {
-        endGame(false);
+        stop(false);
         return;
     }
     head.position = position;
@@ -142,11 +147,6 @@ function getNextPosition(direction, position) {
 
 function removeFromArray(array, element) {
     return array.filter((item) => item !== element);
-}
-
-function endGame(hasWon) {
-    clearInterval(loop);
-    console.log('done', hasWon);
 }
 
 function isTouchingEdges(direction, position) {
