@@ -1,9 +1,9 @@
-const container = document.querySelector('.container');
+const grid = document.querySelector('#grid');
 /**
  * Rappresenta la direzione della testa del serpente
  */
-let direction = 'left';
-let selectedDirection = 'left';
+let direction = 'right';
+let size = 10;
 
 /**
  * Rappresenta la lista delle unità del serpente, dove:
@@ -13,90 +13,153 @@ let selectedDirection = 'left';
  * - "position": la posizione sulla griglia occupata dall'unità
  * - "isDigesting": indica se in questo punto il serpente sta digerendo del cibo
  */
-let snake = [{
-    position: 55,
-    isDigesting: false,
-}];
+let snake = [];
 /**
  * Rappresenta la lista delle celle che sono cibo per serpente 
  */
-let food = [];
-let loop;
+let food;
 
 initialize();
 start();
 
+/**
+ * Inizializza il campo di gioco e lo stato iniziale delle variabili
+ */
 function initialize() {
-    generateFood();
-    generateGrid();
-    updateHTML();
-}
-
-function start() {
-    loop = setInterval(() => {
-        updateVariables();
-        updateHTML();
-    }, 800);
-    document.addEventListener('keydown', function(event) {
-        switch(event.code) {
-            case "ArrowLeft":
-                selectedDirection = 'left';
-                break;
-            case "ArrowUp":
-                selectedDirection = 'top';
-                break;
-            case "ArrowDown":
-                selectedDirection = 'bottom';
-                break;
-            case "ArrowRight":
-                selectedDirection = 'right';
-                break;
-        }
+    snake.push({
+        position: Math.floor(size * size / 2),
+        isDigesting: false,
+        isFailed: false,
     });
+    generateGrid();
+    generateFood();
+    updateHTML();
+    document.addEventListener('keydown', keydown);
 }
 
-function stop() {
-    clearInterval(loop);
-    console.log('done');
-}
-
-function generateFood() {
-    while (food.length !== 5) {
-        const random = Math.floor(Math.random() * 100);
-        if (!food.includes(random) && snake[0] !== random) {
-            food.push(random);
+/**
+ * Avvia il loop di gioco
+ */
+function start() {
+    setTimeout(() => {
+        const isGameEnded = updateGameState();
+        updateHTML();
+        if (isGameEnded != null) {
+            cleanup(isGameEnded);
+        } else {
+            start();
         }
+    }, 800);
+}
+
+/**
+ * Ripulisce e gestisce il fine prtita
+ */
+function cleanup(hasWon) {
+    document.removeEventListener('keydown', keydown);
+    if (hasWon) {
+        document.querySelector('#win').classList.add('visible');
+        grid.classList.add('won');
+    } else {
+        document.querySelector('#score').innerText = snake.length;
+        document.querySelector('#loss').classList.add('visible');
     }
 }
 
+/**
+ * Gestisce l'evento keydown
+ */
+function keydown(event) {
+    let selectedDirection;
+    switch(event.code) {
+        case "ArrowLeft":
+            selectedDirection = 'left';
+            break;
+        case "ArrowUp":
+            selectedDirection = 'top';
+            break;
+        case "ArrowDown":
+            selectedDirection = 'bottom';
+            break;
+        case "ArrowRight":
+            selectedDirection = 'right';
+            break;
+    }
+    if (snake.length === 1 || !isOpposite(selectedDirection, direction)) {
+        direction = selectedDirection;
+        updateHeadRotation();
+    }
+}
+
+/**
+ * Genera una nuova casella di cibo per il serpente, se possibile
+ */
+function generateFood() {
+    const free = getFreeCells();
+    if (free.length !== 0) {
+        const index = Math.floor(Math.random() * free.length);
+        food = free[index];
+    } else {
+        food = null;
+    }
+}
+
+/**
+ * Genera la griglia
+ */
 function generateGrid() {
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < size * size; i++) {
         const cell = document.createElement('div');
         cell.setAttribute('data-i', i);
-        container.appendChild(cell);
+        cell.style.width = `${grid.clientWidth / size}px`;
+        grid.appendChild(cell);
     }
 }
 
+/**
+ * Aggiorna in pagina la rotazione della testa del serpente
+ */
+function updateHeadRotation() {
+    const cells = grid.querySelectorAll('div');
+    const head = cells[snake[0].position];
+    head.classList.remove('left', 'right', 'bottom', 'top');
+    head.classList.add(direction);
+}
+
+/**
+ * Aggiorna in pagina la griglia in base allo stato di gioco
+ * specificato da tutte le variabili
+ */
 function updateHTML() {
-    const cells = document.querySelectorAll('.container > div');
+    const cells = grid.querySelectorAll('div');
     cells.forEach((cell) => {
-        cell.classList.remove('food', 'snake', 'digesting');
+        cell.classList.remove('food', 'snake', 'digesting', 'head', 'left', 'right', 'bottom', 'top');
     });
     snake.forEach((snake) => {
         cells[snake.position].classList.add('snake');
         if (snake.isDigesting) {
             cells[snake.position].classList.add('digesting');
         }
+        if (snake.isFailed) {
+            cells[snake.position].classList.add('fail');
+        }
     });
-    food.forEach((food) => {
+    cells[snake[0].position].classList.add('head');
+    updateHeadRotation();
+    if (food != null) {
         cells[food].classList.add('food');
-    });
+    }
 }
 
-function updateVariables() {
-    if (snake.length === 1 || !isOpposite(direction, selectedDirection)) {
-        direction = selectedDirection;
-    }
+/**
+ * Aggiorna tutte le variabili in modo coerente con il modello di gioco
+ * 
+ * @returns
+ *  - true   Se le condizioni di vittoria sono state verificate e la partita è terminata
+ *  - false  Se le condizioni di perdita sono state verificate e la partita è terminata
+ *  - null   In tutti gli altri casi (il gioco va avanti)
+ */
+function updateGameState() {
     const tail = snake[snake.length - 1];
     const head = snake[0];
     if (tail.isDigesting) {
@@ -105,33 +168,39 @@ function updateVariables() {
             isDigesting: false,
         });
         tail.isDigesting = false;
-        if (snake.length === 100) {
-            stop(true);
-            return;
-        }
+    }
+    if (isTouchingEdges(direction, head.position)) {
+        head.isFailed = true;
+        return false;
+    }
+    const position = getNextPosition(direction, head.position);
+    if (isBitingItself(position)) {
+        snake.find((unit) => unit.position === position).isFailed = true;
+        return false;
     }
     for (let i = snake.length - 1; i > 0; i--) {
         snake[i].position = snake[i - 1].position;
         snake[i].isDigesting = snake[i - 1].isDigesting;
     }
-    if (isTouchingEdges(direction, head.position)) {
-        stop(false);
-        return;
-    }
-    const position = getNextPosition(direction, head.position);
-    if (isBitingItself(position)) {
-        stop(false);
-        return;
-    }
     head.position = position;
-    if (food.includes(head.position)) {
+    if (food === position) {
         head.isDigesting = true;
-        food = removeFromArray(food, head.position);
+        generateFood();
+        if (food == null) {
+            return true;
+        }
     } else {
         head.isDigesting = false;
     }
 }
 
+/**
+ * Calcola la nuova posizione della testa del serpente
+ * 
+ * @param {*} direction La direzione del serpente
+ * @param {*} position  La posizione attuale della testa del serpente
+ * @returns             La nuova posizione della testa del serpente
+ */
 function getNextPosition(direction, position) {
     switch(direction) {
         case 'right':
@@ -139,32 +208,55 @@ function getNextPosition(direction, position) {
         case 'left':
             return position - 1;
         case 'top':
-            return position - 10;
+            return position - size;
         case 'bottom':
-            return position + 10;
+            return position + size;
     }
 }
 
-function removeFromArray(array, element) {
-    return array.filter((item) => item !== element);
+/**
+ * Recupera le celle vuote della griglia 
+ * 
+ * @returns L'array degli indici corrispondenti alle celle vuote
+ */
+function getFreeCells() {
+    const free = [];
+    for (let i = 0; i < size * size; i++) {
+        let isSnakePosition = false;
+        for (let j = 0; j < snake.length; j++) {
+            if (snake[j].position === i) {
+                isSnakePosition = true;
+            }
+        }
+        if (!isSnakePosition) {
+            free.push(i);
+        }
+    }
+    return free;
 }
 
+/**
+ * @param {*} direction La direzione del serpente
+ * @param {*} position  La posizione attuale della testa del serpente
+ * @returns             Un booleano che indica se la testa del serpente
+ *                      si è scontrata con i bordi esterni della griglia
+ */
 function isTouchingEdges(direction, position) {
     const isTouchingRight = (
         direction === 'right' &&
-        (position + 1) % 10 === 0
+        (position + 1) % size === 0
     );
     const isTouchingLeft = (
         direction === 'left' &&
-        position % 10 === 0
+        position % size === 0
     );
     const isTouchingTop = (
         direction === 'top' &&
-        position < 10
+        position < size
     );
     const isTouchingBottom = (
         direction === 'bottom' &&
-        position >= 90
+        position >= (size * size) - size
     );
     return (
         isTouchingRight ||
@@ -174,10 +266,22 @@ function isTouchingEdges(direction, position) {
     );
 }
 
+/**
+ * @param {*} position  La posizione attuale della testa del serpente
+ * @returns             Un booleano che indica se la testa del serpente
+ *                      si è scontrata con il corpo del serpente
+ */
 function isBitingItself(position) {
     return snake.slice(1).some((snake) => snake.position === position);
 }
 
+/**
+ * Indica se due direzioni sono opposte
+ * 
+ * @param {*} direction1 La prima direzione da confrontare
+ * @param {*} direction2 La seconda direzione da confrontare
+ * @returns Un booleano che indica se direction1 e direction2 sono opposte
+ */
 function isOpposite(direction1, direction2) {
     return (
         (direction1 === 'right' && direction2 === 'left') ||
