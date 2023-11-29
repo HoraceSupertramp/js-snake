@@ -12,6 +12,8 @@ let size = 10;
  * Ogni elemento della lista è un oggetto con le chiavi:
  * - "position": la posizione sulla griglia occupata dall'unità
  * - "isDigesting": indica se in questo punto il serpente sta digerendo del cibo
+ * - "isFailed": indica se in questo punto il serpente presenta una rottura fatale
+ *               che ha appena causato la fine del gioco
  */
 let snake = [];
 /**
