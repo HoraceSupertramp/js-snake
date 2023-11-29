@@ -1,8 +1,23 @@
 const grid = document.querySelector('#grid');
+
+/**
+ * Indica se la partita è finita e l'utente ha vinto
+ */
+let isWon = false;
+
+/**
+ * Indica se la partita è finita e l'utente ha perso
+ */
+let isLost = false;
+
 /**
  * Rappresenta la direzione della testa del serpente
  */
 let direction = 'right';
+
+/**
+ * Rappresenta la dimensione della griglia
+ */
 let size = 10;
 
 /**
@@ -16,6 +31,7 @@ let size = 10;
  *               che ha appena causato la fine del gioco
  */
 let snake = [];
+
 /**
  * Rappresenta la lista delle celle che sono cibo per serpente 
  */
@@ -35,7 +51,7 @@ function initialize() {
     });
     generateGrid();
     generateFood();
-    updateHTML();
+    paintGameState();
     document.addEventListener('keydown', keydown);
 }
 
@@ -44,10 +60,10 @@ function initialize() {
  */
 function start() {
     setTimeout(() => {
-        const isGameEnded = updateGameState();
-        updateHTML();
-        if (isGameEnded != null) {
-            cleanup(isGameEnded);
+        updateGameState();
+        paintGameState();
+        if (isWon || isLost) {
+            end();
         } else {
             start();
         }
@@ -57,12 +73,12 @@ function start() {
 /**
  * Ripulisce e gestisce il fine prtita
  */
-function cleanup(hasWon) {
+function end() {
     document.removeEventListener('keydown', keydown);
-    if (hasWon) {
+    if (isWon) {
         document.querySelector('#win').classList.add('visible');
         grid.classList.add('won');
-    } else {
+    } else if (isLost) {
         document.querySelector('#score').innerText = snake.length;
         document.querySelector('#loss').classList.add('visible');
     }
@@ -132,7 +148,7 @@ function updateHeadRotation() {
  * Aggiorna in pagina la griglia in base allo stato di gioco
  * specificato da tutte le variabili
  */
-function updateHTML() {
+function paintGameState() {
     const cells = grid.querySelectorAll('div');
     cells.forEach((cell) => {
         cell.classList.remove('food', 'snake', 'digesting', 'head', 'left', 'right', 'bottom', 'top');
@@ -171,28 +187,30 @@ function updateGameState() {
         });
         tail.isDigesting = false;
     }
-    if (isTouchingEdges(direction, head.position)) {
+    if (isCollidingWithEdges(direction, head.position)) {
         head.isFailed = true;
-        return false;
-    }
-    const position = getNextPosition(direction, head.position);
-    if (isBitingItself(position)) {
-        snake.find((unit) => unit.position === position).isFailed = true;
-        return false;
-    }
-    for (let i = snake.length - 1; i > 0; i--) {
-        snake[i].position = snake[i - 1].position;
-        snake[i].isDigesting = snake[i - 1].isDigesting;
-    }
-    head.position = position;
-    if (food === position) {
-        head.isDigesting = true;
-        generateFood();
-        if (food == null) {
-            return true;
-        }
+        isLost = true;
     } else {
-        head.isDigesting = false;
+        const position = getNextHeadPosition(direction, head.position);
+        if (isBitingItself(position)) {
+            snake.find((unit) => unit.position === position).isFailed = true;
+            isLost = true;
+        } else {
+            for (let i = snake.length - 1; i > 0; i--) {
+                snake[i].position = snake[i - 1].position;
+                snake[i].isDigesting = snake[i - 1].isDigesting;
+            }
+            head.position = position;
+            if (food === position) {
+                head.isDigesting = true;
+                generateFood();
+                if (food == null) {
+                    isWon = true;
+                }
+            } else {
+                head.isDigesting = false;
+            }
+        }
     }
 }
 
@@ -203,7 +221,7 @@ function updateGameState() {
  * @param {*} position  La posizione attuale della testa del serpente
  * @returns             La nuova posizione della testa del serpente
  */
-function getNextPosition(direction, position) {
+function getNextHeadPosition(direction, position) {
     switch(direction) {
         case 'right':
             return position + 1;
@@ -243,7 +261,7 @@ function getFreeCells() {
  * @returns             Un booleano che indica se la testa del serpente
  *                      si è scontrata con i bordi esterni della griglia
  */
-function isTouchingEdges(direction, position) {
+function isCollidingWithEdges(direction, position) {
     const isTouchingRight = (
         direction === 'right' &&
         (position + 1) % size === 0
