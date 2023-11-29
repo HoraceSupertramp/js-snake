@@ -187,8 +187,9 @@ function updateGameState() {
         isLost = true;
     } else {
         const position = getNextHeadPosition(direction, head.position);
-        if (isBitingItself(position)) {
-            snake.find((unit) => unit.position === position).isFailed = true;
+        const collided = getSelfCollision(position);
+        if (collided) {
+            collided.isFailed = true;
             isLost = true;
         } else {
             for (let i = snake.length - 1; i > 0; i--) {
@@ -283,11 +284,15 @@ function isCollidingWithEdges(direction, position) {
 
 /**
  * @param {*} position  La posizione attuale della testa del serpente
- * @returns             Un booleano che indica se la testa del serpente
- *                      si è scontrata con il corpo del serpente
+ * @returns             L'unità del serpente con cui il serpente stesso si è scontrato
  */
-function isBitingItself(position) {
-    return snake.slice(1).some((snake) => snake.position === position);
+function getSelfCollision(position) {
+    for (let i = 0; i < snake.length; i++) {
+        if (snake[i].position === position) {
+            return snake[i];
+        }
+    }
+    return null;
 }
 
 /**
