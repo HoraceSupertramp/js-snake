@@ -171,11 +171,6 @@ function paintGameState() {
 
 /**
  * Aggiorna tutte le variabili in modo coerente con il modello di gioco
- * 
- * @returns
- *  - true   Se le condizioni di vittoria sono state verificate e la partita è terminata
- *  - false  Se le condizioni di perdita sono state verificate e la partita è terminata
- *  - null   In tutti gli altri casi (il gioco va avanti)
  */
 function updateGameState() {
     const tail = snake[snake.length - 1];
